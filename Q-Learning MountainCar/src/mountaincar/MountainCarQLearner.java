@@ -5,12 +5,13 @@ public class MountainCarQLearner implements Runnable {
 	public static final boolean DISPLAY = true;
 	public static final int EPISODES = 100;
 	public static final int POSITION_BINS = 30;
-	public static final int VELOCITY_BINS = 10;
+	public static final int VELOCITY_BINS = 14;
 	
 	private MountainCar mc;
 	private MountainCarWindow window;
 	
 	private double velocity_1 = -100;
+	private double velocity_2 = -100;
 	private Action action_1;
 	private double total_reward = 0.0;
 	private double gamma = 0.99;
@@ -32,8 +33,9 @@ public class MountainCarQLearner implements Runnable {
 			
 			while(!mc.isDone()) {
 				if(DISPLAY)
-					if(stepcounter % 100 == 0)
+					if(stepcounter % 100 == 0) {
 						window.repaintCar();
+					}
 				mc.apply(getAction(mc.clone()).ordinal());
 				stepcounter++;
 			}
@@ -82,45 +84,37 @@ public class MountainCarQLearner implements Runnable {
 			velocity_1 = car.getVelocity();
 			action_1 = Action.values()[(int) (Math.random() * 3)];
 			return action_1;
+		} else if(velocity_2 < -0.07) {
+			velocity_2 = velocity_1;
+			velocity_1 = car.getVelocity();
+			action_1 = Action.values()[(int) (Math.random() * 3)];
+			return action_1;
 		} else {
-			total_reward += car.getReward();
+//			total_reward += car.getReward();
 			double reward = car.getReward();
 			double velocity = car.getVelocity();
-			
-			Action max_action = null;
+								
+			//Q-Value update:
 			double max_Q = Integer.MIN_VALUE;
 			for(int i = 0; i < Action.values().length; i++) {
 				if(QValues[discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][i] > max_Q) {
-					max_action = Action.values()[i];
-					max_Q = QValues[discretize(velocity, -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][i];
+					max_Q = QValues[discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][i];
 				}
 			}
+			QValues[discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][action_1.ordinal()] = reward + gamma * max_Q;
 			
-			car.apply(max_action.ordinal());
-			
-			double velocity_p_1 = car.getVelocity();
-			
-			//Q-Value update:
+
+			Action max_action = null;
 			max_Q = Integer.MIN_VALUE;
 			for(int i = 0; i < Action.values().length; i++) {
-				if(QValues[discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][i] > max_Q) {
-					max_Q = QValues[discretize(velocity, -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][i];
+				if(QValues[discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_2, -0.07, 0.07, VELOCITY_BINS)][i] > max_Q) {
+					max_action = Action.values()[i];
+					max_Q = QValues[discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_2, -0.07, 0.07, VELOCITY_BINS)][i];
 				}
 			}
-			QValues[discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][discretize(velocity_1, -0.07, 0.07, VELOCITY_BINS)][max_action.ordinal()] = reward + gamma * max_Q;
-//			System.out.println(max_Q);
+			
 			return max_action;
 		}
-//		if(velocity_1 > -100) {
-//			if(velocity_1 > car.getVelocity())
-//				return Action.decel;
-//			else
-//				return Action.accel;
-//		}
-//		else {
-//			velocity_1 = car.getVelocity();
-//			return Action.accel;
-//		}
 //		return Action.values()[(int) (Math.random() * 3)];
 	}
 	
