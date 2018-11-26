@@ -6,6 +6,7 @@ public class MountainCarQLearner implements Runnable {
 	public static final int EPISODES = 100;
 	public static final int POSITION_BINS = 30;
 	public static final int VELOCITY_BINS = 14;
+	public static final double gamma = 0.99;
 	
 	private MountainCar mc;
 	private MountainCarWindow window;
@@ -13,8 +14,8 @@ public class MountainCarQLearner implements Runnable {
 	private double velocity_1 = -100;
 //	private double velocity_2 = -100;
 	private double position_1 = -100;
+	private double total_reward = 0.0;
 	private Action action_1 = null;
-	private double gamma = 0.99;
 	private double[][][] QValues;
 	
 	public MountainCarQLearner() {
@@ -27,19 +28,23 @@ public class MountainCarQLearner implements Runnable {
 	
 	@Override
 	public void run() {
-		for(int i = 0; i < EPISODES; i++) {
+		for(int j = 0; j < EPISODES; j++) {
+			total_reward = 0.0;
 			mc.randomInit();
 			int stepcounter = 0;
 			
 			while(!mc.isDone()) {
 				if(DISPLAY)
 					if(stepcounter % 100 == 0) {
+//						System.out.println(stepcounter);
 						window.repaintCar();
 					}
-				mc.apply(getAction(mc.clone()).ordinal());
+					Action action = getAction(mc);
+				mc.apply(action.ordinal());
+				lastUpdate(mc, action);
 				stepcounter++;
 			}
-			System.out.println("Episode " + i + " took " + stepcounter + " steps.");
+			System.out.println("Episode " + j + " took " + stepcounter + " steps." + total_reward);
 		}
 		window.dispose();
 	}
@@ -66,12 +71,6 @@ public class MountainCarQLearner implements Runnable {
 		return clamp(discreteValue, 0, binCount -1);
 	}
 	
-	private int getDiscretizedValue(MountainCar car) {
-		int position = discretize(car.getPosition(), -1.2, 0.6, POSITION_BINS);
-		int velocity = discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS);
-		return velocity;
-	}
-	
 	/**
 	 * This method gets called to decide which action to take next. Since the MountainCar object contains
 	 * the entire state, a deep-clone is passed as argument.
@@ -92,7 +91,7 @@ public class MountainCarQLearner implements Runnable {
 //		} else {
 		if(action_1 != null) {
 			
-//			total_reward += car.getReward();
+			total_reward += car.getReward();
 								
 			//Q-Value update:
 			double max_Q = Integer.MIN_VALUE;
@@ -118,6 +117,24 @@ public class MountainCarQLearner implements Runnable {
 		
 		return max_action;
 //		return Action.values()[(int) (Math.random() * 3)];
+	}
+	
+//	public void updateQValue(MountainCar car, MountainCar car_1, Action action) {
+//		Action max_action = null;
+//		double max_Q = Integer.MIN_VALUE;
+//		for(int i = 0; i < Action.values().length; i++) {
+//			if(QValues[discretize(car.getPosition(), -1.2, 0.6, POSITION_BINS)][discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][i] > max_Q) {
+//				max_action = Action.values()[i];
+//				max_Q = QValues[discretize(car.getPosition(), -1.2, 0.6, POSITION_BINS)][discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][i];
+//			}
+//		}
+//		
+//		QValues[discretize(car_1.getPosition(), -1.2, 0.6, POSITION_BINS)][discretize(car_1.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][action.ordinal()] =
+//				car_1.getReward() + gamma 
+//	}
+	
+	public void lastUpdate(MountainCar car, Action action) {
+		QValues[discretize(car.getPosition(), -1.2, 0.6, POSITION_BINS)][discretize(car.getVelocity(), -0.07, 0.07, VELOCITY_BINS)][action.ordinal()] = car.getReward();
 	}
 	
 	public static void main(String[] args) {
